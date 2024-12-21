@@ -163,8 +163,30 @@
             }
         };
         
-        document.getElementById('exportBtn').onclick = () => {
-            window.location.href = '/export';
+        document.getElementById('exportBtn').onclick = async () => {
+            try {
+                const response = await fetch('/export');
+                
+                if (response.ok) {
+                    // Hvis response er OK, er det en fil
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = response.headers.get('content-disposition')?.split('filename=')[1] || 'soc_report.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                } else {
+                    // Hvis ikke OK, prøv å lese feilmeldingen
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Eksport feilet');
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+                alert(`Feil ved eksport av rapport: ${error.message}`);
+            }
         };
     </script>
 </body>

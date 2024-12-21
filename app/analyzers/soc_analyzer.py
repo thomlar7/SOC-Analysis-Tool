@@ -90,16 +90,17 @@ class SOCAnalyzer:
             
             # Oppsummeringsark
             ws_summary = wb.create_sheet("Summary")
+            ws_mitre = wb.create_sheet("MITRE Analysis")
             
             # ---- HOVEDARK FORMATERING ----
             headers = ['Timestamp', 'URL', 'Risk Category', 'Risk Score', 
-                      'Action Required', 'VirusTotal Link']
+                      'Action Required', 'VirusTotal Link', 'MITRE Score']
             
             # Formater headers
             header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
             header_font = Font(color="FFFFFF", bold=True)
             
-            # Skriv og formater headers på hovedark
+            # Skriv og formater headers
             for col, header in enumerate(headers, 1):
                 cell = ws_main.cell(row=1, column=col, value=header)
                 cell.fill = header_fill
@@ -108,12 +109,10 @@ class SOCAnalyzer:
             
             # Farge-mapping for risikokategorier
             risk_colors = {
-                'KRITISK': 'FF0000',  # Rød
-                'HØY': 'FFA500',      # Oransje
-                'MEDIUM': 'FFFF00',    # Gul
-                'LAV-MEDIUM': 'ADFF2F', # Gulgrønn
+                'HØY': 'FF0000',      # Rød
+                'MEDIUM': 'FFA500',    # Oransje
                 'LAV': '90EE90',       # Lysegrønn
-                'UKLAR': 'CCCCCC',     # Grå
+                'UKJENT': 'CCCCCC',    # Grå
                 'FEIL': '000000'       # Sort
             }
             
@@ -122,57 +121,44 @@ class SOCAnalyzer:
                 ws_main.cell(row=row, column=1, value=report.get('timestamp'))
                 ws_main.cell(row=row, column=2, value=report.get('url'))
                 
-                # Risikokategori med farge
                 risk_cell = ws_main.cell(row=row, column=3, value=report.get('risk_category'))
-                risk_cell.fill = PatternFill(start_color=risk_colors.get(report.get('risk_category', 'UKLAR')), 
-                                           end_color=risk_colors.get(report.get('risk_category', 'UKLAR')), 
-                                           fill_type="solid")
+                risk_cell.fill = PatternFill(
+                    start_color=risk_colors.get(report.get('risk_category', 'UKJENT')), 
+                    end_color=risk_colors.get(report.get('risk_category', 'UKJENT')), 
+                    fill_type="solid"
+                )
                 
                 ws_main.cell(row=row, column=4, value=report.get('risk_score'))
                 ws_main.cell(row=row, column=5, value=report.get('action_required'))
                 ws_main.cell(row=row, column=6, value=report.get('permalink'))
-            
-            # ---- OPPSUMMERINGSARK FORMATERING ----
-            ws_summary.cell(row=1, column=1, value="URL Analysis Summary")
-            ws_summary.cell(row=1, column=1).font = Font(size=14, bold=True)
-            
-            # Genererer oppsummering
-            summary = self.generate_summary()
-            
-            # Skriv total antall
-            ws_summary.cell(row=3, column=1, value="Total URLs Analyzed:")
-            ws_summary.cell(row=3, column=2, value=summary['total_analyzed'])
-            
-            # Skriv distribusjon header
-            ws_summary.cell(row=5, column=1, value="Risk Distribution")
-            ws_summary.cell(row=5, column=1).font = Font(bold=True)
-            
-            # Headers for distribusjon
-            ws_summary.cell(row=6, column=1, value="Risk Category")
-            ws_summary.cell(row=6, column=2, value="Count")
-            ws_summary.cell(row=6, column=3, value="URLs")
-            
-            # Skriv distribusjon data
-            current_row = 7
-            for category, data in summary['risk_distribution'].items():
-                ws_summary.cell(row=current_row, column=1, value=category)
-                ws_summary.cell(row=current_row, column=2, value=data['antall'])
                 
-                # Lag URL-liste med scores
-                url_list = [f"{u['url']} ({u['score']})" for u in data['urls']]
-                ws_summary.cell(row=current_row, column=3, value="\n".join(url_list) if url_list else "None")
-                
-                # Fargelegg kategorien
-                ws_summary.cell(row=current_row, column=1).fill = PatternFill(
-                    start_color=risk_colors.get(category, 'CCCCCC'),
-                    end_color=risk_colors.get(category, 'CCCCCC'),
-                    fill_type="solid"
-                )
-                
-                current_row += 1
+                # Legg til MITRE score
+                if 'mitre_analysis' in report:
+                    ws_main.cell(row=row, column=7, value=report['mitre_analysis'].get('risk_score', 0))
             
-            # Juster kolonnebredder i begge ark
-            for ws in [ws_main, ws_summary]:
+            # ---- MITRE ANALYSIS ARK ----
+            mitre_headers = ['URL', 'Techniques', 'Tactics', 'MITRE Risk Score']
+            
+            for col, header in enumerate(mitre_headers, 1):
+                cell = ws_mitre.cell(row=1, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center')
+            
+            for row, report in enumerate(self.report_history, 2):
+                ws_mitre.cell(row=row, column=1, value=report.get('url'))
+                
+                if 'mitre_analysis' in report:
+                    techniques = ', '.join(report['mitre_analysis'].get('techniques', []))
+                    tactics = ', '.join(report['mitre_analysis'].get('tactics', []))
+                    risk_score = report['mitre_analysis'].get('risk_score', 0)
+                    
+                    ws_mitre.cell(row=row, column=2, value=techniques)
+                    ws_mitre.cell(row=row, column=3, value=tactics)
+                    ws_mitre.cell(row=row, column=4, value=risk_score)
+            
+            # Juster kolonnebredder
+            for ws in [ws_main, ws_summary, ws_mitre]:
                 for column in ws.columns:
                     max_length = 0
                     column = list(column)
@@ -190,6 +176,7 @@ class SOCAnalyzer:
             return f"Rapport eksportert til {filename}"
             
         except Exception as e:
+            print(f"Feil ved eksport: {str(e)}")
             return f"Feil ved eksport: {str(e)}"
     
     def generate_summary(self):

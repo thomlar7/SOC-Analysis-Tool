@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, send_file, jsonify
 from analyzers.soc_analyzer import SOCAnalyzer
 import os
 import json
+from datetime import datetime
 
 app = Flask(__name__)
 analyzer = SOCAnalyzer()
@@ -85,9 +86,41 @@ def get_technique_description(technique_id: str) -> str:
 
 @app.route('/export')
 def export():
-    filename = "soc_reports.xlsx"
-    analyzer.export_to_excel(filename)
-    return send_file(filename, as_attachment=True)
+    try:
+        # Opprett en export-mappe hvis den ikke eksisterer
+        export_dir = os.path.join(os.path.dirname(__file__), 'exports')
+        if not os.path.exists(export_dir):
+            os.makedirs(export_dir)
+        
+        # Generer filnavn med timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"soc_report_{timestamp}.xlsx"
+        filepath = os.path.join(export_dir, filename)
+        
+        # Eksporter til Excel
+        result = analyzer.export_to_excel(filepath)
+        
+        if os.path.exists(filepath):
+            try:
+                return send_file(
+                    filepath,
+                    as_attachment=True,
+                    download_name=filename,
+                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+            except Exception as e:
+                print(f"Feil ved sending av fil: {str(e)}")
+                return jsonify({'error': 'Kunne ikke sende filen'}), 500
+        else:
+            print("Eksportert fil ble ikke funnet")
+            return jsonify({'error': 'Filen ble ikke generert'}), 500
+            
+    except Exception as e:
+        print(f"Eksport feilet: {str(e)}")
+        return jsonify({
+            'error': 'Eksport feilet',
+            'details': str(e)
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
