@@ -26,24 +26,24 @@ The tool uses a sophisticated five-level risk categorization system:
 | MEDIUM | 3-9 detections | Investigation needed |
 | LAV | 0-2 detections | No immediate action required |
 | UKJENT | N/A | Unable to determine - manual review needed |
+| FEIL | N/A | Analysis failed - requires attention |
 
-### MITRE ATT&CK Scoring Model
-The tool implements a weighted scoring system based on MITRE ATT&CK best practices:
+### Advanced Reporting
+- **PDF Reports**: Professional-grade reports with:
+  - Executive summary
+  - Risk distribution charts
+  - MITRE ATT&CK analysis
+  - Detailed findings table
+  - Custom styling and branding
+- **Excel Export**: Detailed data export for further analysis
+- **Filtering & Search**: Advanced filtering capabilities
+- **Historical Analysis**: Track and analyze trends over time
 
-#### Scoring Components
-- **Technique Severity (40%)**: Base severity of identified techniques
-- **Attack Chain Coverage (30%)**: Coverage across tactical phases
-- **Detection Coverage (20%)**: Ease of detection
-- **Mitigation Status (10%)**: Available countermeasures
-
-#### Tactical Phase Weights
-| Phase | Weight |
-|-------|---------|
-| Initial Access | 1.0 |
-| Execution | 0.9 |
-| Impact | 1.0 |
-| Command and Control | 0.9 |
-| Other Phases | 0.6-0.8 |
+### Visual Analytics
+- Interactive risk distribution charts
+- MITRE technique frequency analysis
+- Trend visualization
+- Custom color schemes and styling
 
 ## Installation
 
@@ -84,9 +84,10 @@ python app/app.py
 
 ### Advanced Features
 - **Batch Processing**: Analyze multiple URLs simultaneously
-- **Export**: Generate detailed Excel reports
-- **History**: View and filter historical analyses
-- **Statistics**: Access analysis trends and patterns
+- **Report Generation**: Create detailed PDF reports
+- **Data Export**: Export to Excel for further analysis
+- **History View**: Access and filter historical analyses
+- **Statistics**: View analysis trends and patterns
 
 ## Project Structure
 ```plaintext
@@ -96,13 +97,16 @@ soc-analysis-tool/
 │   │   ├── mitre_analyzer.py
 │   │   ├── phishing_analyzer.py
 │   │   └── soc_analyzer.py
-│   ├── static/            # Static assets
+│   ├── reporting/         # Report generation
+│   │   └── report_generator.py
+│   ├── static/           # Static assets
 │   │   ├── css/
 │   │   └── js/
-│   ├── templates/         # HTML templates
-│   │   └── index.html
-│   └── app.py            # Main application
-├── requirements.txt      # Dependencies
+│   ├── templates/        # HTML templates
+│   │   ├── index.html
+│   │   └── history.html
+│   └── app.py           # Main application
+├── requirements.txt     # Dependencies
 └── README.md
 ```
 
@@ -112,7 +116,8 @@ soc-analysis-tool/
 - **Analysis**: MITRE ATT&CK Framework
 - **API Integration**: VirusTotal
 - **Database**: SQLite with SQLAlchemy
-- **Reporting**: Excel generation with openpyxl
+- **Reporting**: ReportLab, Matplotlib
+- **Styling**: Custom CSS, Professional color schemes
 
 ## Contributing
 Contributions are welcome! Please feel free to submit pull requests.
@@ -125,3 +130,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - VirusTotal API for URL analysis
 - Flask Framework for web application
 - Bootstrap for UI components
+- ReportLab and Matplotlib for reporting

@@ -9,7 +9,11 @@
     <div class="container mt-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Analysis History</h1>
-            <a href="/" class="btn btn-primary">Back to Analyzer</a>
+            <div>
+                <a href="/test_simple_report" class="btn btn-secondary">Test Simple Report</a>
+                <button type="button" class="btn btn-info" id="reportBtn">Generate Report</button>
+                <a href="/" class="btn btn-primary">Back to Analyzer</a>
+            </div>
         </div>
 
         <!-- Legg til dette rett før søkeformen -->
@@ -148,5 +152,42 @@
         </nav>
         {% endif %}
     </div>
+
+    <!-- Legg til dette nederst i body -->
+    <script>
+    document.getElementById('reportBtn').addEventListener('click', async () => {
+        try {
+            // Hent aktive filtre
+            const formData = new FormData();
+            formData.append('search', document.querySelector('input[name="search"]').value);
+            formData.append('risk_category', document.querySelector('select[name="risk_category"]').value);
+            formData.append('date_from', document.querySelector('input[name="date_from"]').value);
+            formData.append('date_to', document.querySelector('input[name="date_to"]').value);
+            
+            const response = await fetch('/generate_report', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = response.headers.get('content-disposition')?.split('filename=')[1] || 'soc_report.pdf';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Rapport-generering feilet');
+            }
+        } catch (error) {
+            console.error('Report generation error:', error);
+            alert(`Feil ved generering av rapport: ${error.message}`);
+        }
+    });
+    </script>
 </body>
 </html> 

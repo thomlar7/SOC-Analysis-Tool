@@ -4,6 +4,7 @@ import os
 import json
 from datetime import datetime
 from models import db, Analysis
+from reporting.report_generator import ReportGenerator
 
 # Database setup
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -230,6 +231,183 @@ def calculate_period_stats(analyses):
         stats['most_common_technique'] = most_common[0]
     
     return stats
+
+@app.route('/generate_report', methods=['POST'])
+def generate_report():
+    try:
+        print("\n=== Starting Report Generation ===")
+        
+        # Sørg for at exports-mappen eksisterer
+        export_dir = os.path.join(app.root_path, 'exports')
+        if not os.path.exists(export_dir):
+            os.makedirs(export_dir)
+            print(f"Created exports directory: {export_dir}")
+        
+        # Hent data fra databasen
+        try:
+            analyses = Analysis.query.order_by(Analysis.timestamp.desc()).all()
+            print(f"Found {len(analyses)} analyses in database")
+        except Exception as e:
+            print(f"Database error: {str(e)}")
+            return jsonify({'error': 'Databasefeil ved henting av analyser', 'details': str(e)}), 500
+        
+        if not analyses:
+            return jsonify({'error': 'Ingen data å generere rapport fra'}), 400
+        
+        # Debug: Skriv ut alle risikokategorier
+        risk_categories = set(a.risk_category for a in analyses)
+        print("\nUnique risk categories in database:", risk_categories)
+        
+        # Konverter til dict og valider data
+        analyses_dict = []
+        conversion_errors = []
+        
+        for i, analysis in enumerate(analyses):
+            try:
+                analysis_data = analysis.to_dict()
+                # Valider nødvendige felter
+                required_fields = ['url', 'risk_category', 'risk_score', 'timestamp']
+                missing_fields = [field for field in required_fields if field not in analysis_data]
+                
+                if missing_fields:
+                    raise ValueError(f"Manglende felt: {', '.join(missing_fields)}")
+                    
+                analyses_dict.append(analysis_data)
+            except Exception as e:
+                error_msg = f"Error converting analysis {i}: {str(e)}"
+                print(error_msg)
+                conversion_errors.append(error_msg)
+        
+        if not analyses_dict:
+            error_details = '\n'.join(conversion_errors)
+            return jsonify({
+                'error': 'Kunne ikke konvertere analysedata',
+                'details': error_details
+            }), 500
+        
+        # Generer rapport
+        try:
+            report_generator = ReportGenerator()
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            report_path = os.path.join(export_dir, f'soc_report_{timestamp}.pdf')
+            
+            print(f"Generating report to: {report_path}")
+            print(f"Number of analyses to include: {len(analyses_dict)}")
+            
+            # Generer PDF
+            report_generator.generate_pdf_report(analyses_dict, report_path)
+            
+            if not os.path.exists(report_path):
+                raise FileNotFoundError(f"Generated report file not found at: {report_path}")
+            
+            print("Report generated successfully")
+            
+            try:
+                return send_file(
+                    report_path,
+                    as_attachment=True,
+                    download_name=f'soc_report_{timestamp}.pdf',
+                    mimetype='application/pdf'
+                )
+            except Exception as e:
+                print(f"Error sending file: {str(e)}")
+                raise
+            
+        except Exception as e:
+            print(f"Error during PDF generation: {str(e)}")
+            if os.path.exists(report_path):
+                os.remove(report_path)
+            raise
+            
+    except Exception as e:
+        import traceback
+        print(f"Critical error in generate_report:")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        print("Traceback:")
+        traceback.print_exc()
+        
+        return jsonify({
+            'error': 'Kunne ikke generere rapport',
+            'details': str(e)
+        }), 500
+
+@app.route('/test_report')
+def test_report():
+    try:
+        export_dir = os.path.join(app.root_path, 'exports')
+        if not os.path.exists(export_dir):
+            os.makedirs(export_dir)
+            
+        report_path = os.path.join(export_dir, 'test_report.pdf')
+        report_generator = ReportGenerator()
+        
+        if report_generator.test_pdf_generation(report_path):
+            return send_file(
+                report_path,
+                as_attachment=True,
+                download_name='test_report.pdf',
+                mimetype='application/pdf'
+            )
+        else:
+            return jsonify({'error': 'PDF generation test failed'}), 500
+            
+    except Exception as e:
+        return jsonify({
+            'error': 'Test report generation failed',
+            'details': str(e)
+        }), 500
+
+@app.route('/test_simple_report')
+def test_simple_report():
+    try:
+        print("\n=== Testing Simple Report Generation ===")
+        
+        # Opprett en enkel test-analyse
+        test_data = [{
+            'url': 'http://example.com',
+            'risk_category': 'MEDIUM',
+            'risk_score': '5/96',
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'action_required': 'Test action',
+            'mitre_analysis': {
+                'techniques': ['T1190', 'T1133'],
+                'tactics': ['Initial Access'],
+                'risk_score': 75
+            }
+        }]
+        
+        # Opprett exports-mappe
+        export_dir = os.path.join(app.root_path, 'exports')
+        if not os.path.exists(export_dir):
+            os.makedirs(export_dir)
+        
+        # Generer test-rapport
+        report_generator = ReportGenerator()
+        report_path = os.path.join(export_dir, 'simple_test_report.pdf')
+        
+        print("Generating simple test report...")
+        report_generator.generate_pdf_report(test_data, report_path)
+        
+        if os.path.exists(report_path):
+            print("Test report generated successfully")
+            return send_file(
+                report_path,
+                as_attachment=True,
+                download_name='simple_test_report.pdf',
+                mimetype='application/pdf'
+            )
+        else:
+            raise FileNotFoundError("Test report file was not created")
+            
+    except Exception as e:
+        print(f"Error in test_simple_report: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': 'Test report generation failed',
+            'details': str(e)
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
