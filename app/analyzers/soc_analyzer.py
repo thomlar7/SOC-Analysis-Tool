@@ -27,16 +27,19 @@ class SOCAnalyzer:
                 positives, total = map(int, risk_score.split('/'))
                 score_percent = (positives / total) * 100 if total > 0 else 0
                 
-                # Forenklet risikokategorisering med tre nivåer
-                if score_percent == 0:
+                # Nye risikokategorier med oppdaterte grenser
+                if score_percent < 3:  # 0-2 positive
                     result['risk_category'] = 'LAV'
                     result['action_required'] = 'Ingen umiddelbar handling nødvendig'
-                elif score_percent < 20:
+                elif score_percent < 10:  # 3-9 positive
                     result['risk_category'] = 'MEDIUM'
-                    result['action_required'] = 'Vurder manuell gjennomgang'
-                else:
+                    result['action_required'] = 'Undersøk nærmere - mulig falsk positiv'
+                elif score_percent < 20:  # 10-19 positive
                     result['risk_category'] = 'HØY'
                     result['action_required'] = 'Umiddelbar handling påkrevd!'
+                else:  # 20+ positive
+                    result['risk_category'] = 'KRITISK'
+                    result['action_required'] = 'KRITISK: Umiddelbar isolasjon og handling påkrevd!'
             else:
                 result['risk_category'] = 'UKJENT'
                 result['action_required'] = 'Kunne ikke bestemme risiko - manuell vurdering nødvendig'

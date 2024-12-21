@@ -3,8 +3,33 @@ from analyzers.soc_analyzer import SOCAnalyzer
 import os
 import json
 from datetime import datetime
+from models import db, Analysis
+
+# Database setup
+basedir = os.path.abspath(os.path.dirname(__file__))
+instance_path = os.path.join(basedir, 'instance')
+
+# Sørg for at instance-mappen eksisterer
+if not os.path.exists(instance_path):
+    os.makedirs(instance_path)
 
 app = Flask(__name__, static_url_path='/static')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "soc_analysis.db")}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db.init_app(app)
+
+def init_db():
+    with app.app_context():
+        try:
+            db.create_all()
+            print("Database successfully initialized")
+        except Exception as e:
+            print(f"Error initializing database: {str(e)}")
+
+# Initialiser databasen ved oppstart
+init_db()
+
 analyzer = SOCAnalyzer()
 
 @app.route('/')
@@ -26,6 +51,16 @@ def analyze():
         for url in urls:
             try:
                 result = analyzer.analyze_and_categorize(url)
+                
+                # Lagre i database
+                analysis = Analysis(
+                    url=url,
+                    risk_category=result.get('risk_category'),
+                    risk_score=result.get('risk_score'),
+                    action_required=result.get('action_required'),
+                    mitre_analysis=result.get('mitre_analysis')
+                )
+                db.session.add(analysis)
                 
                 # Formater MITRE-resultatene for frontend
                 if 'mitre_analysis' in result:
@@ -54,6 +89,8 @@ def analyze():
                     'risk_category': 'FEIL',
                     'action_required': 'Analyse feilet - kontakt administrator'
                 })
+        
+        db.session.commit()
         
         return jsonify({
             'results': results,
@@ -121,6 +158,78 @@ def export():
             'error': 'Eksport feilet',
             'details': str(e)
         }), 500
+
+@app.route('/history')
+def history():
+    # Hent søkeparametere
+    search = request.args.get('search', '')
+    risk_category = request.args.get('risk_category', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    
+    # Bygg spørringen
+    query = Analysis.query
+    
+    if search:
+        query = query.filter(Analysis.url.like(f'%{search}%'))
+    
+    if risk_category:
+        query = query.filter(Analysis.risk_category == risk_category)
+        
+    if date_from:
+        query = query.filter(Analysis.timestamp >= datetime.strptime(date_from, '%Y-%m-%d'))
+        
+    if date_to:
+        query = query.filter(Analysis.timestamp <= datetime.strptime(date_to, '%Y-%m-%d'))
+    
+    # Sorter og paginer
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    pagination = query.order_by(Analysis.timestamp.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Beregn statistikk for den filtrerte perioden
+    stats = calculate_period_stats(query.all())
+    
+    return render_template('history.html',
+        analyses=[a.to_dict() for a in pagination.items],
+        pagination=pagination,
+        stats=stats
+    )
+
+def calculate_period_stats(analyses):
+    """Beregner statistikk for en gitt periode"""
+    stats = {
+        'total_analyses': len(analyses),
+        'critical_risk': sum(1 for a in analyses if a.risk_category == 'KRITISK'),
+        'high_risk': sum(1 for a in analyses if a.risk_category == 'HØY'),
+        'avg_mitre_score': 0,
+        'most_common_technique': 'Ingen data'
+    }
+    
+    # Beregn gjennomsnittlig MITRE-score
+    mitre_scores = [
+        a.mitre_analysis.get('risk_score', 0) 
+        for a in analyses 
+        if a.mitre_analysis
+    ]
+    if mitre_scores:
+        stats['avg_mitre_score'] = sum(mitre_scores) / len(mitre_scores)
+    
+    # Finn mest brukte MITRE-teknikk
+    technique_count = {}
+    for analysis in analyses:
+        if analysis.mitre_analysis and 'techniques' in analysis.mitre_analysis:
+            for tech in analysis.mitre_analysis['techniques']:
+                technique_count[tech] = technique_count.get(tech, 0) + 1
+    
+    if technique_count:
+        most_common = max(technique_count.items(), key=lambda x: x[1])
+        stats['most_common_technique'] = most_common[0]
+    
+    return stats
 
 if __name__ == '__main__':
     app.run(debug=True)

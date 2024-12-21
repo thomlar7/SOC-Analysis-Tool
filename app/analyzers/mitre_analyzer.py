@@ -212,35 +212,93 @@ class MitreAttackAnalyzer:
         return list(tactics)
 
     def _calculate_risk_score(self, techniques: List[str]) -> int:
-        """Beregner en mer nyansert risikoscore basert på identifiserte teknikker"""
+        """
+        Beregner risikoscore basert på MITRE ATT&CK beste praksis
+        """
         if not techniques:
             return 0
         
-        # Definer vekting for ulike teknikker
-        technique_weights = {
-            'T1190': 80,  # Exploit Public-Facing Application
-            'T1133': 70,  # External Remote Services
-            'T1566': 75,  # Phishing
-            'T1105': 65,  # Ingress Tool Transfer
-            'T1496': 60,  # Resource Hijacking
-            'T1071.001': 50,  # Web Protocols
-            'T1102': 45,  # Web Service
-            'T1129': 55,  # Shared Modules
-            'T1587': 70,  # Develop Capabilities
-            'T1588': 65,  # Obtain Capabilities
-            'T1204.001': 70  # User Execution: Malicious Link
+        # Sub-scores basert på MITRE's scoring komponenter
+        scores = {
+            'technique_severity': 0,    # Alvorlighetsgrad av teknikkene
+            'technique_coverage': 0,    # Hvor mange faser av attack chain
+            'detection_coverage': 0,    # Hvor lett å oppdage
+            'mitigation_status': 0      # Tilgjengelige mottiltak
         }
         
-        # Beregn vektet gjennomsnitt
-        total_weight = 0
-        total_score = 0
+        # Vekting av teknikker basert på taktiske faser
+        phase_weights = {
+            'initial-access': 1.0,
+            'execution': 0.9,
+            'persistence': 0.8,
+            'privilege-escalation': 0.9,
+            'defense-evasion': 0.8,
+            'credential-access': 0.9,
+            'discovery': 0.6,
+            'lateral-movement': 0.8,
+            'collection': 0.7,
+            'command-and-control': 0.9,
+            'exfiltration': 0.8,
+            'impact': 1.0
+        }
+        
+        # Teknikk-spesifikke vekter
+        technique_base_severity = {
+            'T1190': 85,  # Exploit Public-Facing Application
+            'T1133': 75,  # External Remote Services
+            'T1566': 80,  # Phishing
+            'T1105': 70,  # Ingress Tool Transfer
+            'T1496': 65,  # Resource Hijacking
+            'T1071.001': 55,  # Web Protocols
+            'T1102': 50,  # Web Service
+            'T1129': 60,  # Shared Modules
+            'T1587': 75,  # Develop Capabilities
+            'T1588': 70,  # Obtain Capabilities
+            'T1204.001': 75  # User Execution: Malicious Link
+        }
         
         for technique in techniques:
-            weight = technique_weights.get(technique, 50)  # Standard vekt 50 hvis ikke definert
-            total_weight += weight
-            total_score += weight
+            tech_data = self.techniques_cache.get(technique, {})
+            base_severity = technique_base_severity.get(technique, 50)
+            
+            # Hent taktikker for teknikken
+            tactics = tech_data.get('tactics', [])
+            tactic_multiplier = max([phase_weights.get(t.lower(), 0.5) for t in tactics], default=0.5)
+            
+            # Beregn justert alvorlighetsgrad
+            adjusted_severity = base_severity * tactic_multiplier
+            
+            # Oppdater scores
+            scores['technique_severity'] += adjusted_severity
+            scores['technique_coverage'] += len(tactics) / 12  # 12 taktiske faser totalt
+            scores['detection_coverage'] += 1 if tech_data.get('detection') else 0
+            scores['mitigation_status'] += 1 if tech_data.get('mitigation') else 0
+            
+        # Normaliser scores
+        num_techniques = len(techniques)
+        if num_techniques > 0:
+            scores['technique_severity'] /= num_techniques
+            scores['technique_coverage'] = min(100, scores['technique_coverage'] * 100)
+            scores['detection_coverage'] = (scores['detection_coverage'] / num_techniques) * 100
+            scores['mitigation_status'] = (scores['mitigation_status'] / num_techniques) * 100
+            
+            # Vektet total score med justerte vekter
+            final_score = (
+                scores['technique_severity'] * 0.4 +  # Alvorlighetsgrad er viktigst
+                scores['technique_coverage'] * 0.3 +  # Dekningsgrad er nest viktigst
+                scores['detection_coverage'] * 0.2 +  # Oppdagelsesmuligheter
+                scores['mitigation_status'] * 0.1     # Mottiltak minst vektet
+            )
+        else:
+            final_score = 0
         
-        return int((total_score / max(total_weight, 1)) * 100) if total_weight > 0 else 0
+        # Legg til debug-utskrift
+        print(f"\nMITRE Score Calculation:")
+        print(f"Number of techniques: {num_techniques}")
+        print(f"Sub-scores: {json.dumps(scores, indent=2)}")
+        print(f"Final score: {int(min(100, final_score))}")
+        
+        return int(min(100, final_score))
 
     def analyze_threat(self, data: Dict) -> Dict:
         """Analyserer trusler mot MITRE ATT&CK rammeverket"""
