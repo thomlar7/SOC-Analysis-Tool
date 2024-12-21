@@ -131,3 +131,131 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Flask Framework for web application
 - Bootstrap for UI components
 - ReportLab and Matplotlib for reporting
+
+## Technical Documentation
+
+### Architecture Overview
+The application follows a modular architecture with clear separation of concerns:
+
+```plaintext
+Client Layer (Frontend)
+    │
+    ├── Web Interface (HTML/JS/CSS)
+    │   ├── Real-time Analysis UI
+    │   ├── Historical View
+    │   └── Report Generation
+    │
+Application Layer (Backend)
+    │
+    ├── Core Analysis
+    │   ├── URL Processing
+    │   ├── Threat Detection
+    │   └── Risk Assessment
+    │
+    ├── MITRE Integration
+    │   ├── Technique Mapping
+    │   ├── Tactic Analysis
+    │   └── Risk Scoring
+    │
+    ├── Reporting Engine
+    │   ├── PDF Generation
+    │   ├── Data Visualization
+    │   └── Excel Export
+    │
+Data Layer
+    ├── SQLite Database
+    ├── File Storage (Reports)
+    └── Cache (MITRE Data)
+```
+
+### API Endpoints
+
+#### Analysis Endpoints
+- `POST /analyze`
+  - Analyzes one or more URLs
+  - Accepts: JSON with URL list
+  - Returns: Analysis results with risk assessment
+
+- `GET /history`
+  - Retrieves historical analyses
+  - Supports: Pagination, filtering, sorting
+  - Returns: Paginated analysis records
+
+#### Report Endpoints
+- `POST /generate_report`
+  - Generates PDF report
+  - Supports: Custom date ranges, filtering
+  - Returns: PDF document
+
+- `GET /export`
+  - Exports data to Excel
+  - Supports: Custom data selection
+  - Returns: Excel file
+
+### Database Schema
+
+```sql
+CREATE TABLE Analysis (
+    id INTEGER PRIMARY KEY,
+    url VARCHAR(500) NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    risk_category VARCHAR(50),
+    risk_score VARCHAR(50),
+    action_required TEXT,
+    mitre_analysis JSON
+);
+
+-- Indexes for better performance
+CREATE INDEX idx_url ON Analysis(url);
+CREATE INDEX idx_timestamp ON Analysis(timestamp);
+CREATE INDEX idx_risk_category ON Analysis(risk_category);
+```
+
+### Risk Assessment Logic
+```python
+def assess_risk(detections):
+    if detections >= 20:
+        return 'KRITISK'
+    elif detections >= 10:
+        return 'HØY'
+    elif detections >= 3:
+        return 'MEDIUM'
+    elif detections >= 0:
+        return 'LAV'
+    return 'UKJENT'
+```
+
+### Report Generation
+The reporting engine uses:
+- ReportLab for PDF generation
+- Matplotlib for data visualization
+- Custom styling for professional appearance
+
+Example report structure:
+```python
+def generate_report(data):
+    # Header section
+    title_page()
+    executive_summary()
+    
+    # Analysis section
+    risk_distribution_chart()
+    mitre_analysis_chart()
+    
+    # Details section
+    detailed_findings_table()
+    
+    # Footer
+    summary_and_recommendations()
+```
+
+### Environment Variables
+```bash
+# Required
+VIRUSTOTAL_API_KEY=your_api_key
+
+# Optional
+DEBUG=True
+DATABASE_URL=sqlite:///path/to/db
+REPORT_PATH=/path/to/reports
+```
