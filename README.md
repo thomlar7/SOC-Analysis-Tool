@@ -101,3 +101,8 @@ soc-analysis-tool/
    - Tactical analysis
    - Recommended actions
 5. Export results to Excel for reporting
+
+## Acknowledgments
+- MITRE ATT&CK® Framework
+- VirusTotal API
+- Flask Framework
