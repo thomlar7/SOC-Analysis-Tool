@@ -5,7 +5,7 @@ from datetime import datetime
 
 class PhishingAnalyzer:
     def __init__(self):
-        self.vt_api_key = "a36636fac697b62b73df10962cddf029a52eaf3aae4469884c54fd72b7cecd5f"
+        self.vt_api_key = "you virustotal api key"
         self.vt_base_url = "https://www.virustotal.com/vtapi/v2/"
         
     def check_url(self, url):
