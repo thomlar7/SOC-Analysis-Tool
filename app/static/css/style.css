@@ -1,0 +1,60 @@
+.mitre-analysis {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 15px;
+}
+
+.technique-card {
+    background-color: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-left: 4px solid #2c3e50;
+    margin-bottom: 15px;
+}
+
+.technique-id {
+    color: #2c3e50;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.technique-description {
+    font-size: 0.9em;
+    color: #666;
+    margin: 8px 0;
+    line-height: 1.4;
+}
+
+.technique-tactics {
+    background-color: #f8f9fa;
+    padding: 5px 10px;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.technique-tactics small {
+    color: #666;
+    font-style: italic;
+}
+
+.tactics-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.tactic-item {
+    display: inline-block;
+    background-color: #e9ecef;
+    color: #2c3e50;
+    padding: 4px 10px;
+    margin: 3px;
+    border-radius: 15px;
+    font-size: 0.9em;
+}
+
+.risk-score .badge {
+    font-size: 1em;
+    padding: 8px 12px;
+}
