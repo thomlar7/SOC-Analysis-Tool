@@ -1,12 +1,36 @@
+/* Card styling */
+.result-card {
+    margin-bottom: 15px;
+}
+
+/* Risk category colors */
+.risk-HØY { 
+    background-color: #ffcccc !important; 
+}
+
+.risk-MEDIUM { 
+    background-color: #ffffcc !important; 
+}
+
+.risk-LAV { 
+    background-color: #ccffcc !important; 
+}
+
+.risk-UKJENT { 
+    background-color: #f2f2f2 !important; 
+}
+
+/* MITRE Analysis styling */
 .mitre-analysis {
-    background-color: #f8f9fa;
     padding: 15px;
     border-radius: 5px;
     margin-top: 15px;
+    background-color: rgba(248, 249, 250, 0.7); /* Semi-transparent background */
+    border: 1px solid rgba(0,0,0,0.1);
 }
 
 .technique-card {
-    background-color: white;
+    background-color: rgba(255, 255, 255, 0.9);
     padding: 15px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -57,4 +81,49 @@
 .risk-score .badge {
     font-size: 1em;
     padding: 8px 12px;
+}
+
+/* Badge colors */
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: #000;
+}
+
+.badge.bg-success {
+    background-color: #28a745 !important;
+}
+
+/* Alert styling */
+.alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+/* Summary section */
+#summary {
+    padding: 10px;
+}
+
+#summary ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+#summary li {
+    margin: 5px 0;
+    padding: 5px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
 }

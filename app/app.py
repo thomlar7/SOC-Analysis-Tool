@@ -4,7 +4,7 @@ import os
 import json
 from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 analyzer = SOCAnalyzer()
 
 @app.route('/')
